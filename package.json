@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "dev:mem": "node -e \"(async () => { const {startMemoryMongo}=await import('./lib/memoryMongo.js'); await startMemoryMongo(); })()\" && next dev"
   },
   "dependencies": {
     "lucide-react": "^0.469.0",
@@ -23,6 +24,7 @@
     "dotenv": "^17.4.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
+    "mongodb-memory-server": "^11.3.0",
     "tailwindcss": "^4"
   }
 }

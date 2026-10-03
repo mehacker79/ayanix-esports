@@ -1,5 +1,5 @@
 // ==========================================
-// FILE: app/page.js — Main Root Client Orchestrator & Auth Gate
+// FILE: app/page.js â€” Main Root Client Orchestrator & Auth Gate
 // ==========================================
 "use client";
 
@@ -49,6 +49,7 @@ export default function Page() {
   const [selectedLobby, setSelectedLobby] = useState(null);
   const [confirmation, setConfirmation] = useState(null);
   const [utilityPanel, setUtilityPanel] = useState(null);
+  const [roomModal, setRoomModal] = useState(null); // { tournamentId, title }
   const [profile, setProfile] = useState({
     email: "",
     username: "Warrior",
@@ -256,6 +257,10 @@ export default function Page() {
             setSelectedLobby(null);
             setConfirmation(payload);
           }}
+          onOpenRoomModal={(info) => {
+            setSelectedLobby(null);
+            setRoomModal(info);
+          }}
         />
       )}
 
@@ -264,6 +269,14 @@ export default function Page() {
           title={confirmation.title}
           subtitle={confirmation.subtitle}
           onClose={() => setConfirmation(null)}
+        />
+      )}
+
+      {roomModal && (
+        <MatchRoomModal
+          tournamentId={roomModal.tournamentId}
+          title={roomModal.title}
+          onClose={() => setRoomModal(null)}
         />
       )}
 
@@ -332,22 +345,22 @@ function SiteFooter() {
           <a href="https://www.ayanixtech.com" target="_blank" rel="noopener noreferrer" className="text-cyan-300 hover:underline">
             Ayanix Tech
           </a>{" "}
-          (Govt. Registered MSME — UDYAM-MH-25-0049639). Entry fees fund skill-based squad
-          tournament prize pools only — no betting, no wagering.
+          (Govt. Registered MSME â€” UDYAM-MH-25-0049639). Entry fees fund skill-based squad
+          tournament prize pools only â€” no betting, no wagering.
         </p>
         <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-[11px] font-semibold text-slate-400">
           <a href="/terms" className="hover:text-cyan-300">
             Terms &amp; Conditions
           </a>
-          <span className="text-slate-700">·</span>
+          <span className="text-slate-700">Â·</span>
           <a href="/privacy" className="hover:text-cyan-300">
             Privacy Policy
           </a>
-          <span className="text-slate-700">·</span>
+          <span className="text-slate-700">Â·</span>
           <a href="https://wa.me/919970889890" target="_blank" rel="noopener noreferrer" className="hover:text-cyan-300">
             WhatsApp Support
           </a>
-          <span className="text-slate-700">·</span>
+          <span className="text-slate-700">Â·</span>
           <a href="mailto:ayanixtech@gmail.com" className="hover:text-cyan-300">
             ayanixtech@gmail.com
           </a>
@@ -454,7 +467,7 @@ function AuthModal({ onClose, onSuccess }) {
 
   const handleCredentialsSubmit = (e) => {
     e.preventDefault();
-    setError("Password login isn't set up yet — use OTP Login below for now.");
+    setError("Password login isn't set up yet â€” use OTP Login below for now.");
     setAuthMode("login");
   };
 
@@ -715,7 +728,7 @@ function AuthModal({ onClose, onSuccess }) {
 
 const EMPTY_MEMBER = { ign: "", charId: "" };
 
-function LobbyDetailModal({ lobby, onClose, isLoggedIn, onRequireAuth, userEmail, profile, onJoinConfirmed }) {
+function LobbyDetailModal({ lobby, onClose, isLoggedIn, onRequireAuth, userEmail, profile, onJoinConfirmed, onOpenRoomModal }) {
   const { game, map, startsAt, squadsFilled } = lobby;
   const squadCap = lobby.squadCap || game.squadCap;
   const pctFilled = Math.min(100, Math.round((squadsFilled / squadCap) * 100));
@@ -780,7 +793,7 @@ function LobbyDetailModal({ lobby, onClose, isLoggedIn, onRequireAuth, userEmail
       if (!orderRes.ok) throw new Error(order?.error || "Could not create the registration order.");
 
       if (typeof window === "undefined" || !window.Razorpay) {
-        throw new Error("Payment gateway is still loading — try again in a second.");
+        throw new Error("Payment gateway is still loading â€” try again in a second.");
       }
 
       const rzp = new window.Razorpay({
@@ -788,7 +801,7 @@ function LobbyDetailModal({ lobby, onClose, isLoggedIn, onRequireAuth, userEmail
         amount: order.amount,
         currency: order.currency,
         name: "Ayanix Esports",
-        description: `${map} Showdown — ${game.label} squad entry`,
+        description: `${map} Showdown â€” ${game.label} squad entry`,
         order_id: order.orderId,
         prefill: { email: userEmail || "", name: squadName.trim() },
         theme: { color: "#22d3ee" },
@@ -813,7 +826,7 @@ function LobbyDetailModal({ lobby, onClose, isLoggedIn, onRequireAuth, userEmail
               subtitle: `${squadName.trim()} is confirmed for ${map} Showdown. Room ID & password will be shared here and on WhatsApp before match time.`,
             });
           } catch (err) {
-            setError(err.message || "Payment succeeded but verification failed — message support with your payment ID.");
+            setError(err.message || "Payment succeeded but verification failed â€” message support with your payment ID.");
             setStep("form");
           } finally {
             setSubmitting(false);
@@ -859,13 +872,13 @@ function LobbyDetailModal({ lobby, onClose, isLoggedIn, onRequireAuth, userEmail
           {step === "processing" ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
               <Loader2 size={32} className="animate-spin text-cyan-300" />
-              <p className="text-sm font-semibold text-white">Opening secure Razorpay checkout…</p>
+              <p className="text-sm font-semibold text-white">Opening secure Razorpay checkoutâ€¦</p>
               <p className="text-xs text-slate-400">Don't close this window until payment finishes.</p>
             </div>
           ) : step === "form" ? (
             <form onSubmit={handlePay} className="space-y-4">
               <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/5 p-3 text-xs text-slate-300">
-                {game.label} · {map} Showdown · Entry ₹{game.entryFeePerSquad} / squad
+                {game.label} Â· {map} Showdown Â· Entry â‚¹{game.entryFeePerSquad} / squad
               </div>
 
               <div>
@@ -884,7 +897,7 @@ function LobbyDetailModal({ lobby, onClose, isLoggedIn, onRequireAuth, userEmail
                 {members.map((member, i) => (
                   <div key={i} className="rounded-2xl border border-white/10 bg-[#121d2d] p-3">
                     <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-300">
-                      {i === 0 ? "Player 1 (Captain — you)" : `Player ${i + 1}`}
+                      {i === 0 ? "Player 1 (Captain â€” you)" : `Player ${i + 1}`}
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       <input
@@ -933,7 +946,7 @@ function LobbyDetailModal({ lobby, onClose, isLoggedIn, onRequireAuth, userEmail
 
               <div className="flex items-center justify-between rounded-2xl border border-cyan-400/20 bg-cyan-500/5 px-4 py-3 text-sm font-bold text-white">
                 <span className="font-medium text-slate-300">Pay now</span>
-                <span>₹{game.entryFeePerSquad}</span>
+                <span>â‚¹{game.entryFeePerSquad}</span>
               </div>
 
               <button
@@ -941,7 +954,7 @@ function LobbyDetailModal({ lobby, onClose, isLoggedIn, onRequireAuth, userEmail
                 disabled={submitting}
                 className="w-full rounded-xl bg-cyan-500 px-4 py-3 text-sm font-bold text-[#04121a] transition hover:bg-cyan-400 disabled:opacity-60"
               >
-                {submitting ? "Please wait…" : `Pay ₹${game.entryFeePerSquad} & Register`}
+                {submitting ? "Please waitâ€¦" : `Pay â‚¹${game.entryFeePerSquad} & Register`}
               </button>
             </form>
           ) : (
@@ -959,12 +972,12 @@ function LobbyDetailModal({ lobby, onClose, isLoggedIn, onRequireAuth, userEmail
                     </div>
                     <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 px-2.5 py-2 text-right">
                       <p className="text-[10px] uppercase tracking-[0.14em] text-slate-400">Prize</p>
-                      <p className="text-base font-black text-cyan-300">₹{game.prizePool?.toLocaleString("en-IN") || "1400"}</p>
+                      <p className="text-base font-black text-cyan-300">â‚¹{game.prizePool?.toLocaleString("en-IN") || "1400"}</p>
                     </div>
                   </div>
 
                   <div className="mt-5 grid grid-cols-3 gap-2.5">
-                    <InfoPill label="Entry" value={`₹${game.entryFeePerSquad}`} Icon={Ticket} />
+                    <InfoPill label="Entry" value={`â‚¹${game.entryFeePerSquad}`} Icon={Ticket} />
                     <InfoPill label="Time" value={startsAt} Icon={CalendarDays} />
                     <InfoPill label="Mode" value="Squad" Icon={ShieldCheck} />
                   </div>
@@ -987,7 +1000,7 @@ function LobbyDetailModal({ lobby, onClose, isLoggedIn, onRequireAuth, userEmail
                 </div>
                 <ul className="space-y-2 text-sm text-slate-300">
                   <li className="flex items-start gap-2"><span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-cyan-400" /> 4-player squad only</li>
-                  <li className="flex items-start gap-2"><span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-cyan-400" /> {map} map · Room ID &amp; password shared 10 minutes before start</li>
+                  <li className="flex items-start gap-2"><span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-cyan-400" /> {map} map Â· Room ID &amp; password shared 10 minutes before start</li>
                   <li className="flex items-start gap-2"><span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-cyan-400" /> Prize pool split across top 3 squads (50% / 30% / 20%)</li>
                 </ul>
               </div>
@@ -997,10 +1010,10 @@ function LobbyDetailModal({ lobby, onClose, isLoggedIn, onRequireAuth, userEmail
                   <Wallet size={16} /> Payment summary
                 </div>
                 <div className="space-y-2 text-sm text-slate-300">
-                  <div className="flex items-center justify-between"><span>Entry fee</span><span>₹{game.entryFeePerSquad}</span></div>
-                  <div className="flex items-center justify-between"><span>Processing</span><span>₹0</span></div>
+                  <div className="flex items-center justify-between"><span>Entry fee</span><span>â‚¹{game.entryFeePerSquad}</span></div>
+                  <div className="flex items-center justify-between"><span>Processing</span><span>â‚¹0</span></div>
                   <div className="mt-2 flex items-center justify-between border-t border-white/10 pt-2 text-base font-bold text-white">
-                    <span>Total</span><span>₹{game.entryFeePerSquad}</span>
+                    <span>Total</span><span>â‚¹{game.entryFeePerSquad}</span>
                   </div>
                 </div>
               </div>
@@ -1012,6 +1025,16 @@ function LobbyDetailModal({ lobby, onClose, isLoggedIn, onRequireAuth, userEmail
               >
                 {squadsFilled >= squadCap ? "Lobby Full" : "Register Squad & Pay"}
               </button>
+
+              {/* Room credentials & live chat â€” visible once registered */}
+              {isLoggedIn && lobby._id && (
+                <button
+                  onClick={() => onOpenRoomModal?.({ tournamentId: lobby._id, title: lobby.title || `${map} Showdown` })}
+                  className="mt-2 w-full rounded-xl border border-cyan-400/20 bg-cyan-500/5 px-4 py-2.5 text-sm font-semibold text-cyan-300 transition hover:bg-cyan-500/10"
+                >
+                  ðŸ”‘ Room Credentials & Live Chat
+                </button>
+              )}
             </>
           )}
         </div>
@@ -1056,7 +1079,7 @@ function UtilityPanelModal({ panel, onClose }) {
           ) : (
             <div className="relative mt-5 rounded-2xl border border-cyan-400/20 bg-cyan-500/5 p-4">
               <p className="text-sm font-semibold text-white">Team Nemesis</p>
-              <p className="mt-1 text-xs text-slate-400">4/5 players · Captain access enabled</p>
+              <p className="mt-1 text-xs text-slate-400">4/5 players Â· Captain access enabled</p>
               <p className="mt-4 text-xs leading-5 text-slate-300">Open Teams below to edit your roster, rename the squad, or invite a teammate by IGN.</p>
             </div>
           )}
@@ -1075,7 +1098,7 @@ function ConfirmationModal({ title, subtitle, onClose }) {
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
       <div className="w-full max-w-sm rounded-[30px] border border-cyan-400/20 bg-[#111b2c] p-5 shadow-[0_30px_80px_rgba(8,15,25,0.85)]">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-cyan-500/10 text-2xl text-cyan-300">
-          ✓
+          âœ“
         </div>
         <h3 className="text-center text-xl font-black text-white">{title}</h3>
         <p className="mt-2 text-center text-sm text-slate-300">{subtitle}</p>
@@ -1124,5 +1147,236 @@ function GoogleGlyph() {
       <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.4 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.4 39.6 16.1 44 24 44z" />
       <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4.1 5.6l6.2 5.2C41 35.9 44 30.4 44 24c0-1.2-.1-2.4-.4-3.5z" />
     </svg>
+  );
+}
+
+// ============================================================
+// MATCH ROOM MODAL â€” Player sees Match Code, Room Credentials
+// (time-gated) and the Live Chat with the host.
+// ============================================================
+function MatchRoomModal({ tournamentId, title, onClose }) {
+  const [tab, setTab] = useState("credentials");
+  const [creds, setCreds] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // Chat state
+  const [messages, setMessages] = useState([]);
+  const [chatText, setChatText] = useState("");
+  const [isCheatReport, setIsCheatReport] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [chatError, setChatError] = useState("");
+  const bottomRef = useRef(null);
+  const pollRef = useRef(null);
+
+  const fetchCreds = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/match/credentials?tournamentId=${tournamentId}`);
+      const d = await res.json();
+      if (!res.ok) { setError(d.error || "Failed to load credentials."); return; }
+      setCreds(d);
+    } catch {
+      setError("Server error.");
+    } finally {
+      setLoading(false);
+    }
+  }, [tournamentId]);
+
+  const fetchMessages = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/match/chat?tournamentId=${tournamentId}`);
+      const d = await res.json();
+      if (d.messages) setMessages(d.messages);
+    } catch {}
+  }, [tournamentId]);
+
+  useEffect(() => {
+    fetchCreds();
+    fetchMessages();
+    pollRef.current = setInterval(fetchMessages, 5000);
+    return () => clearInterval(pollRef.current);
+  }, [fetchCreds, fetchMessages]);
+
+  useEffect(() => {
+    if (tab === "chat") bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, tab]);
+
+  const sendChat = async (e) => {
+    e.preventDefault();
+    if (!chatText.trim()) return;
+    setSending(true);
+    setChatError("");
+    try {
+      const res = await fetch("/api/match/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tournamentId, text: chatText.trim(), isCheatReport }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setChatError(d.error || "Failed to send."); return; }
+      setChatText("");
+      setIsCheatReport(false);
+      fetchMessages();
+    } catch {
+      setChatError("Could not send.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 px-3 pb-4 pt-10 backdrop-blur-sm md:items-center">
+      <div className="relative flex w-full max-w-md max-h-[88vh] flex-col overflow-hidden rounded-[28px] border border-cyan-400/20 bg-[#101a2b] shadow-[0_30px_80px_rgba(8,15,25,0.85)]">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Match Room</p>
+            <p className="text-sm font-bold text-white truncate max-w-[220px]">{title}</p>
+          </div>
+          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-300 hover:text-cyan-300 transition">
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Tab bar */}
+        <div className="flex border-b border-white/10 px-4 pt-3 gap-1">
+          {[
+            { key: "credentials", label: "ðŸ”‘ Room" },
+            { key: "chat", label: "ðŸ’¬ Live Chat" },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`text-xs font-semibold px-3 py-2 rounded-t-xl transition-colors ${
+                tab === key
+                  ? "bg-cyan-500/10 text-cyan-300 border-b-2 border-cyan-400"
+                  : "text-slate-500 hover:text-slate-300"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab content */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {tab === "credentials" && (
+            <div className="space-y-3">
+              {loading ? (
+                <div className="flex justify-center py-8"><Loader2 className="animate-spin text-cyan-400" size={24} /></div>
+              ) : error ? (
+                <div className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-3 text-xs text-red-300">
+                  <AlertTriangle size={14} className="shrink-0" /> {error}
+                </div>
+              ) : (
+                <>
+                  {/* Match Code â€” always visible */}
+                  <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/5 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 mb-1">Your Match Code</p>
+                    <p className="text-2xl font-black text-cyan-300 tracking-widest">{creds.matchCode}</p>
+                    <p className="text-[11px] text-slate-500 mt-1">Show this to your squad. Confirms you're in the right match.</p>
+                  </div>
+
+                  {/* Room Credentials */}
+                  {creds.credentialsAvailable ? (
+                    <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/5 px-4 py-3 space-y-2">
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-400 mb-1">Room Credentials â€” LIVE</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400">Room ID</span>
+                        <span className="font-black font-mono text-white text-sm">{creds.roomId}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400">Password</span>
+                        <span className="font-black font-mono text-white text-sm">{creds.roomPassword}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-amber-400/20 bg-amber-500/5 px-4 py-3">
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-amber-400 mb-1">Room Credentials</p>
+                      <p className="text-xs text-slate-300">{creds.message}</p>
+                      {creds.revealAt && (
+                        <p className="text-xs font-semibold text-amber-300 mt-1">
+                          Visible at: {new Date(creds.revealAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="text-center">
+                    <p className="text-[11px] text-slate-600">
+                      Match starts: {creds.matchStartAt ? new Date(creds.matchStartAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "â€”"}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {tab === "chat" && (
+            <div className="flex flex-col gap-3 h-full">
+              {/* Messages */}
+              <div className="h-56 overflow-y-auto bg-[#0b0f19] border border-[#1f293d] rounded-xl p-3 space-y-2">
+                {messages.length === 0 && (
+                  <p className="text-xs text-slate-600 text-center mt-8">No messages yet. Ask your host anything here!</p>
+                )}
+                {messages.map((msg) => (
+                  <div key={msg._id} className={`flex ${msg.senderRole === "player" ? "justify-end" : "justify-start"}`}>
+                    <div
+                      className={`max-w-[80%] rounded-2xl px-3 py-2 text-xs ${
+                        msg.isCheatReport
+                          ? "bg-red-500/20 border border-red-500/40 text-red-200"
+                          : msg.senderRole === "host"
+                          ? "bg-cyan-500/15 text-cyan-100"
+                          : "bg-[#1f293d] text-slate-200"
+                      }`}
+                    >
+                      {msg.isCheatReport && (
+                        <div className="flex items-center gap-1 text-red-400 font-bold mb-1 text-[10px]">
+                          <AlertTriangle size={11} /> CHEAT REPORT
+                        </div>
+                      )}
+                      <p className="text-[10px] font-semibold mb-0.5 opacity-70">{msg.senderLabel}</p>
+                      <p>{msg.text}</p>
+                    </div>
+                  </div>
+                ))}
+                <div ref={bottomRef} />
+              </div>
+
+              {/* Cheat report toggle */}
+              <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isCheatReport}
+                  onChange={(e) => setIsCheatReport(e.target.checked)}
+                  className="accent-red-500 rounded"
+                />
+                <AlertTriangle size={12} className="text-red-400" />
+                Flag as cheat/hack report
+              </label>
+
+              {chatError && <p className="text-xs text-red-400">{chatError}</p>}
+
+              <form onSubmit={sendChat} className="flex gap-2">
+                <input
+                  value={chatText}
+                  onChange={(e) => setChatText(e.target.value)}
+                  placeholder="Message the hostâ€¦"
+                  maxLength={500}
+                  className="flex-1 bg-[#0b0f19] border border-[#1f293d] rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-400"
+                />
+                <button
+                  type="submit"
+                  disabled={sending || !chatText.trim()}
+                  className="bg-cyan-500 hover:bg-cyan-400 disabled:opacity-40 text-[#04121a] p-2.5 rounded-xl transition-colors"
+                >
+                  <Send size={16} />
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

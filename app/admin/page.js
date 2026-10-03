@@ -1,10 +1,14 @@
 // ==========================================
-// FILE: app/admin/page.js — Protected Admin & Sub-Host Control Panel
+// FILE: app/admin/page.js — Protected Admin & Host Control Panel
 // ==========================================
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { Lock, Mail, ShieldCheck, IndianRupee, Users, LogOut, MapPin, Trophy, CalendarClock } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Lock, Mail, ShieldCheck, IndianRupee, Users, LogOut, MapPin, Trophy,
+  CalendarClock, UserPlus, Ban, CheckCircle, Gamepad2, Link2, RefreshCw,
+  ChevronDown, ChevronUp, Loader2, Eye, EyeOff,
+} from "lucide-react";
 import { GAMES, MAP_ART, getFullLobbyEconomics, calculateTournamentEconomics, formatINR } from "@/lib/tournamentConfig";
 
 export default function AdminPage() {
@@ -114,15 +118,6 @@ function AdminLogin({ onSuccess }) {
 }
 
 function AdminDashboard({ session, onLogout }) {
-  const [subHosts, setSubHosts] = useState([]);
-
-  useEffect(() => {
-    fetch("/api/admin/auth")
-      .then((r) => r.json())
-      .then((d) => setSubHosts(d.subHosts || []))
-      .catch(() => {});
-  }, []);
-
   const bgmiEcon = getFullLobbyEconomics("BGMI");
   const ffEcon = getFullLobbyEconomics("FREEFIRE");
   const totalPlatformCut = bgmiEcon.platformCut + ffEcon.platformCut;
@@ -140,7 +135,7 @@ function AdminDashboard({ session, onLogout }) {
             <ShieldCheck size={20} className="text-cyan-400" /> Control Panel
           </h1>
           <p className="text-xs text-slate-500">
-            Signed in as {session.role === "SUPER_ADMIN" ? "Super Admin" : `Sub-Host (${session.scope})`}
+            Signed in as {session.role === "SUPER_ADMIN" ? "Super Admin" : `Host (${session.scope})`}
           </p>
         </div>
         <button
@@ -190,32 +185,28 @@ function AdminDashboard({ session, onLogout }) {
         <CreateTournamentForm session={session} />
       </section>
 
-      {/* Sub-host delegation */}
+      {/* Host Management (Super Admin only) */}
       {session.role === "SUPER_ADMIN" && (
-        <section>
-          <h2 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-1.5">
-            <Users size={15} className="text-cyan-400" /> Sub-Host Delegation
-          </h2>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {subHosts.map((host) => (
-              <div key={host.id} className="bg-[#131a26] border border-[#1f293d] rounded-xl p-4 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold">{host.id}</p>
-                  <p className="text-[11px] text-slate-500">
-                    Manages {host.scope === "BGMI" ? "BGMI tournaments & room IDs" : "Free Fire scoring & settlements"}
-                  </p>
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-wide bg-cyan-500/15 text-cyan-300 px-2 py-1 rounded-full">
-                  {host.scope}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
+        <>
+          <section className="mb-8">
+            <h2 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-1.5">
+              <Gamepad2 size={15} className="text-cyan-400" /> Host Management
+            </h2>
+            <HostManagementPanel />
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-1.5">
+              <Link2 size={15} className="text-cyan-400" /> Assign Host to Tournament
+            </h2>
+            <AssignHostPanel />
+          </section>
+        </>
       )}
     </div>
   );
 }
+
 
 function CreateTournamentForm({ session }) {
   // A sub-host only ever hosts inside their own scope; a super admin can pick either.
@@ -417,6 +408,293 @@ function Row({ label, value }) {
     <div className="flex items-center justify-between">
       <span className="text-slate-500">{label}</span>
       <span className="font-semibold text-white">{value}</span>
+    </div>
+  );
+}
+
+// ============================================================
+// HOST MANAGEMENT PANEL — Create & manage host accounts
+// ============================================================
+function HostManagementPanel() {
+  const [hosts, setHosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ name: "", email: "", password: "", scope: "BGMI", commissionPct: 5 });
+  const [showPw, setShowPw] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+
+  const loadHosts = useCallback(() => {
+    setLoading(true);
+    fetch("/api/admin/hosts")
+      .then((r) => r.json())
+      .then((d) => setHosts(d.hosts || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { loadHosts(); }, [loadHosts]);
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    setFeedback(null);
+    setBusy(true);
+    try {
+      const res = await fetch("/api/admin/host/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const d = await res.json();
+      if (!res.ok) { setFeedback({ type: "error", text: d.error }); return; }
+      setFeedback({ type: "ok", text: `Host "${d.host.name}" created successfully.` });
+      setForm({ name: "", email: "", password: "", scope: "BGMI", commissionPct: 5 });
+      setShowCreate(false);
+      loadHosts();
+    } catch {
+      setFeedback({ type: "error", text: "Server error." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleHost = async (hostId, isActive) => {
+    const res = await fetch("/api/admin/host/toggle", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hostId, isActive }),
+    });
+    const d = await res.json();
+    if (res.ok) loadHosts();
+    else alert(d.error);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Create form toggle */}
+      <button
+        onClick={() => { setShowCreate((v) => !v); setFeedback(null); }}
+        className="flex items-center gap-2 text-xs font-semibold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 px-3 py-2 rounded-xl transition-colors"
+      >
+        <UserPlus size={14} />
+        {showCreate ? "Cancel" : "Create New Host Account"}
+      </button>
+
+      {showCreate && (
+        <form
+          onSubmit={handleCreate}
+          className="bg-[#131a26] border border-[#1f293d] rounded-2xl p-4 space-y-3"
+        >
+          <p className="text-xs font-bold text-slate-300 mb-1">New Host Details</p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <AdminField label="Full Name" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} placeholder="e.g. Rahul Sharma" />
+            <AdminField label="Email" type="email" value={form.email} onChange={(v) => setForm((f) => ({ ...f, email: v }))} placeholder="host@ayanix.com" />
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-400 mb-1.5">Password (min 8 chars)</label>
+              <div className="flex items-center gap-2 bg-[#0b0f19] border border-[#1f293d] rounded-xl px-3 py-2.5 focus-within:border-cyan-400">
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={form.password}
+                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                  placeholder="Secure password"
+                  className="bg-transparent flex-1 text-sm text-white placeholder:text-slate-500 focus:outline-none"
+                />
+                <button type="button" onClick={() => setShowPw((v) => !v)} className="text-slate-500 hover:text-slate-300">
+                  {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-400 mb-1.5">Game Scope</label>
+              <div className="flex rounded-xl border border-[#1f293d] bg-[#0b0f19] p-1">
+                {["BGMI", "FREEFIRE"].map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, scope: g }))}
+                    className={`flex-1 rounded-lg py-2 text-xs font-bold transition-colors ${
+                      form.scope === g ? "bg-cyan-500/15 text-cyan-300" : "text-slate-500 hover:text-slate-300"
+                    }`}
+                  >
+                    {g === "FREEFIRE" ? "Free Fire" : g}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-400 mb-1.5">Commission % (per match, from platform cut)</label>
+            <input
+              type="number" min={0} max={100} value={form.commissionPct}
+              onChange={(e) => setForm((f) => ({ ...f, commissionPct: Number(e.target.value) }))}
+              className="w-32 bg-[#0b0f19] border border-[#1f293d] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-400"
+            />
+          </div>
+          {feedback && (
+            <p className={`text-xs ${feedback.type === "ok" ? "text-emerald-400" : "text-red-400"}`}>{feedback.text}</p>
+          )}
+          <button
+            type="submit" disabled={busy}
+            className="w-full bg-cyan-500 hover:bg-cyan-400 text-[#04121a] font-bold text-sm py-2.5 rounded-xl transition-colors disabled:opacity-60"
+          >
+            {busy ? "Creating…" : "Create Host Account"}
+          </button>
+        </form>
+      )}
+
+      {feedback && !showCreate && (
+        <p className={`text-xs ${feedback.type === "ok" ? "text-emerald-400" : "text-red-400"}`}>{feedback.text}</p>
+      )}
+
+      {/* Host list */}
+      {loading ? (
+        <div className="flex justify-center py-6"><Loader2 className="animate-spin text-cyan-400" size={24} /></div>
+      ) : hosts.length === 0 ? (
+        <p className="text-xs text-slate-500 text-center py-6">No hosts created yet. Use the button above to add one.</p>
+      ) : (
+        <div className="space-y-2">
+          {hosts.map((h) => (
+            <div
+              key={h._id}
+              className={`flex items-center justify-between bg-[#131a26] border rounded-xl px-4 py-3 ${h.isActive ? "border-[#1f293d]" : "border-red-500/20 opacity-70"}`}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-bold text-white">{h.name}</p>
+                  <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full ${h.scope === "BGMI" ? "bg-amber-500/15 text-amber-300" : "bg-orange-500/15 text-orange-300"}`}>
+                    {h.scope}
+                  </span>
+                  {!h.isActive && (
+                    <span className="text-[10px] font-bold bg-red-500/15 text-red-400 px-1.5 py-0.5 rounded-full">BANNED</span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 truncate">{h.email} · {h.commissionPct}% commission</p>
+              </div>
+              <button
+                onClick={() => toggleHost(h._id, !h.isActive)}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ml-4 shrink-0 ${
+                  h.isActive
+                    ? "text-red-400 hover:bg-red-500/10 border border-red-500/20"
+                    : "text-emerald-400 hover:bg-emerald-500/10 border border-emerald-500/20"
+                }`}
+              >
+                {h.isActive ? <><Ban size={12} /> Ban</> : <><CheckCircle size={12} /> Activate</>}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// ASSIGN HOST PANEL — Link a host to a tournament
+// ============================================================
+function AssignHostPanel() {
+  const [hosts, setHosts] = useState([]);
+  const [tournaments, setTournaments] = useState([]);
+  const [selectedTournament, setSelectedTournament] = useState("");
+  const [selectedHost, setSelectedHost] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+
+  useEffect(() => {
+    // Load active hosts
+    fetch("/api/admin/hosts")
+      .then((r) => r.json())
+      .then((d) => setHosts((d.hosts || []).filter((h) => h.isActive)))
+      .catch(() => {});
+    // Load upcoming/live tournaments from admin API
+    fetch("/api/admin/tournaments")
+      .then((r) => r.json())
+      .then((d) => setTournaments(d.tournaments || []))
+      .catch(() => {});
+  }, []);
+
+  const handleAssign = async (e) => {
+    e.preventDefault();
+    setFeedback(null);
+    if (!selectedTournament || !selectedHost) {
+      setFeedback({ type: "error", text: "Select both a tournament and a host." });
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch("/api/admin/tournament/assign-host", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tournamentId: selectedTournament, hostId: selectedHost }),
+      });
+      const d = await res.json();
+      if (!res.ok) { setFeedback({ type: "error", text: d.error }); return; }
+      setFeedback({ type: "ok", text: d.message });
+      setSelectedTournament("");
+      setSelectedHost("");
+    } catch {
+      setFeedback({ type: "error", text: "Server error." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const selectClass = "w-full bg-[#0b0f19] border border-[#1f293d] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-cyan-400";
+
+  return (
+    <form onSubmit={handleAssign} className="bg-[#131a26] border border-[#1f293d] rounded-2xl p-4 space-y-3">
+      <p className="text-xs text-slate-400">Assign a host account to manage a specific match. The host's scope must match the tournament's game.</p>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-400 mb-1.5">Tournament</label>
+          <select value={selectedTournament} onChange={(e) => setSelectedTournament(e.target.value)} className={selectClass}>
+            <option value="">— Select tournament —</option>
+            {tournaments
+              .filter((t) => t.status !== "COMPLETED")
+              .map((t) => (
+                <option key={t._id} value={t._id}>
+                  [{t.game}] {t.title} · {t.matchCode || ""}
+                </option>
+              ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-400 mb-1.5">Host</label>
+          <select value={selectedHost} onChange={(e) => setSelectedHost(e.target.value)} className={selectClass}>
+            <option value="">— Select host —</option>
+            {hosts.map((h) => (
+              <option key={h._id} value={h._id}>
+                {h.name} ({h.scope})
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      {feedback && (
+        <p className={`text-xs ${feedback.type === "ok" ? "text-emerald-400" : "text-red-400"}`}>{feedback.text}</p>
+      )}
+      <button
+        type="submit" disabled={busy}
+        className="bg-cyan-500 hover:bg-cyan-400 text-[#04121a] font-bold text-sm px-5 py-2.5 rounded-xl transition-colors disabled:opacity-60"
+      >
+        {busy ? "Assigning…" : "Assign Host"}
+      </button>
+    </form>
+  );
+}
+
+// ── Shared admin input field ─────────────────────────────────────────────────
+function AdminField({ label, value, onChange, ...props }) {
+  return (
+    <div>
+      <label className="block text-[11px] font-semibold text-slate-400 mb-1.5">{label}</label>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-[#0b0f19] border border-[#1f293d] rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-400"
+        {...props}
+      />
     </div>
   );
 }
